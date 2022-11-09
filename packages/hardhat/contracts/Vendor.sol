@@ -14,6 +14,12 @@ contract Vendor is Ownable {
         uint256 amountOfTokens
     );
 
+    event SellTokens(
+        address indexed seller,
+        uint256 amountOfEth,
+        uint256 amountOfTokens
+    );
+
     YourToken public yourToken;
 
     constructor(address tokenAddress) {
@@ -24,16 +30,14 @@ contract Vendor is Ownable {
 
     // ToDo: create a payable buyTokens() function:
     function buyTokens() public payable {
-        uint256 amount = msg.value * tokensPerEth;
-        yourToken.transfer(msg.sender, amount);
-        emit BuyTokens(msg.sender, msg.value, amount);
+        uint256 amountOfTokens = msg.value * tokensPerEth;
+        yourToken.transfer(msg.sender, amountOfTokens);
+        emit BuyTokens(msg.sender, msg.value, amountOfTokens);
     }
 
     // ToDo: create a withdraw() function that lets the owner withdraw ETH
     function withdraw() public {
-        if (msg.sender != owner()) {
-            revert Vendor__YouMustBeTheOwner();
-        }
+        require(msg.sender == owner(), "Ownable: caller is not the owner");
         (bool callSuccess, ) = payable(msg.sender).call{
             value: address(this).balance
         }("");
@@ -43,4 +47,13 @@ contract Vendor is Ownable {
     }
 
     // ToDo: create a sellTokens(uint256 _amount) function:
+    function sellTokens(uint256 amount) public {
+        uint256 amountOfEth = amount / tokensPerEth;
+        yourToken.transferFrom(msg.sender, address(this), amount);
+        (bool callSuccess, ) = payable(msg.sender).call{value: amountOfEth}("");
+        if (!callSuccess) {
+            revert Vendor__TransferFailed();
+        }
+        emit SellTokens(msg.sender, amountOfEth, amount);
+    }
 }
